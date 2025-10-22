@@ -1,30 +1,12 @@
-# Stage 1: Build the app
-FROM gradle:8.3-jdk17-alpine AS builder
+from ubuntu:latest As build
 
-# Set working directory
-WORKDIR /app
+run api-get update
+run api-get install openjdk-17-jdk -y
+copy . .
+run ./gradlew bootJar --no-daemon
 
-# Copy Gradle files
-COPY build.gradle.kts settings.gradle.kts gradle.properties ./
-COPY gradle ./gradle
-
-# Copy source code
-COPY src ./src
-
-# Build the JAR
-RUN gradle clean bootJar --no-daemon
-
-# Stage 2: Create the final runtime image
-FROM openjdk:17-jdk-slim
-
-# Set working directory
-WORKDIR /app
-
-# Copy the JAR from builder stage
-COPY --from=builder /app/build/libs/*.jar app.jar
-
-# Expose port
+from openjdk:17-jdk-slim
 EXPOSE 8080
+COPY --from=build build/libs/todos-0.0.1-SNAPSHOT.jar app.jar
 
-# Run the app
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
