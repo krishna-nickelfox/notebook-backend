@@ -1,21 +1,30 @@
-# Stage 1: Use OpenJDK 17 slim (lightweight, reliable)
-FROM openjdk:17-jdk-slim
+# Stage 1: Build the app
+FROM gradle:8.3-jdk17-alpine AS builder
 
-# Set working directory inside container
+# Set working directory
 WORKDIR /app
 
-# Copy the built JAR into container
-# Make sure you have run ./gradlew bootJar before this
-COPY build/libs/*.jar app.jar
+# Copy Gradle files
+COPY build.gradle.kts settings.gradle.kts gradle.properties ./
+COPY gradle ./gradle
 
-# Expose port 8080
+# Copy source code
+COPY src ./src
+
+# Build the JAR
+RUN gradle clean bootJar --no-daemon
+
+# Stage 2: Create the final runtime image
+FROM openjdk:17-jdk-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy the JAR from builder stage
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+# Expose port
 EXPOSE 8080
 
-# Environment variables placeholder (can be overridden on Render)
-# Example for Postgres:
-# ENV SPRING_DATASOURCE_URL=jdbc:postgresql://host:port/dbname
-# ENV SPRING_DATASOURCE_USERNAME=youruser
-# ENV SPRING_DATASOURCE_PASSWORD=yourpassword
-
-# Run the Spring Boot application
+# Run the app
 ENTRYPOINT ["java", "-jar", "app.jar"]
